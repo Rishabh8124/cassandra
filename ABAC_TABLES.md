@@ -12,12 +12,7 @@ All tables will be created in the `system_auth` keyspace.
 
 This table stores the schema for the attributes that can be used in the ABAC system.
 
-**Purpose:**
-
-This table defines the allowed attributes, their data types, and their possible values. This ensures that only well-defined attributes are used in policies and assigned to resources.
-
 **Schema:**
-
 ```cql
 CREATE TABLE system_auth.attribute_definitions (
     attribute_name text PRIMARY KEY,
@@ -28,59 +23,73 @@ CREATE TABLE system_auth.attribute_definitions (
 
 **Columns:**
 
-*   `attribute_name`: The unique name of the attribute (e.g., 'department', 'region', 'sensitivity').
-*   `attribute_type`: The data type of the attribute (e.g., 'text', 'int', 'boolean').
-*   `allowed_values`: An optional set of predefined allowed values for the attribute. If this is null, the attribute can have any value of the specified type.
+*   `attribute_name`: The unique name of the attribute.
+*   `attribute_type`: The data type of the attribute.
+*   `allowed_values`: An optional set of predefined allowed values for the attribute.
 
-### 2.2. `attributes`
+### 2.2. `user_attribute_values`
 
-This table stores the attributes for users and resources.
-
-**Purpose:**
-
-This table holds the key-value attributes that are assigned to users and resources. The values assigned to attributes in this table will be validated against the `attribute_definitions` table.
+This table assigns attribute values to users.
 
 **Schema:**
-
 ```cql
-CREATE TABLE system_auth.attributes (
-    resource_type text,
-    resource_name text,
-    attributes map<text, text>,
-    PRIMARY KEY ((resource_type, resource_name))
+CREATE TABLE system_auth.user_attribute_values (
+    user_name text,
+    attribute_name text,
+    attribute_value text,
+    PRIMARY KEY (user_name, attribute_name)
 );
 ```
 
 **Columns:**
 
-*   `resource_type`: The type of the resource (e.g., 'user', 'table').
-*   `resource_name`: The name of the resource (e.g., a username or a table name).
-*   `attributes`: A map of key-value pairs representing the attributes of the resource.
+*   `user_name`: The name of the user.
+*   `attribute_name`: The name of the attribute.
+*   `attribute_value`: The value of the attribute for the user.
 
-### 2.3. `abac_policies`
+### 2.3. `resource_attribute_values`
+
+This table assigns attribute values to resources.
+
+**Schema:**
+```cql
+CREATE TABLE system_auth.resource_attribute_values (
+    resource_name text,
+    attribute_name text,
+    attribute_value text,
+    PRIMARY KEY (resource_name, attribute_name)
+);
+```
+
+**Columns:**
+
+*   `resource_name`: The name of the resource.
+*   `attribute_name`: The name of the attribute.
+*   `attribute_value`: The value of the attribute for the resource.
+
+### 2.4. `abac_rules`
 
 This table stores the ABAC policy rules.
 
-**Purpose:**
-
-This table holds the core ABAC policies that are evaluated to make access control decisions. Each row represents a single policy.
-
 **Schema:**
-
 ```cql
-CREATE TABLE system_auth.abac_policies (
-    policy_name text PRIMARY KEY,
-    resource text,
-    conditions list<text>,
-    effect text,
-    permissions set<text>
+CREATE TABLE system_auth.abac_rules (
+    rule_name text PRIMARY KEY,
+    permissions set<text>,
+    resource_type text,
+    user_attribute_conditions map<text, text>,
+    resource_attribute_conditions map<text, text>,
+    environment_attribute_conditions map<text, text>,
+    effect text
 );
 ```
 
 **Columns:**
 
-*   `policy_name`: The unique name of the policy.
-*   `resource`: The resource to which the policy applies (e.g., a keyspace, table, or role).
-*   `conditions`: A list of conditions that must be met for the policy to be applied. Each condition is stored as a string.
+*   `rule_name`: The unique name of the rule.
+*   `permissions`: The set of permissions being granted or denied.
+*   `resource_type`: The type of resource the rule applies to.
+*   `user_attribute_conditions`: A map of user attributes and their required values.
+*   `resource_attribute_conditions`: A map of resource attributes and their required values.
+*   `environment_attribute_conditions`: A map of environment attributes and their required values.
 *   `effect`: The effect of the policy, which can be either `GRANT` or `DENY`.
-*   `permissions`: The set of permissions that are granted or denied by the policy.

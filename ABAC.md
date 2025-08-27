@@ -12,13 +12,15 @@ The following new and modified CQL statements are proposed to support the ABAC s
 
 ### 2.1. Attribute Management
 
+Attributes are defined in a global namespace, meaning that an attribute has the same definition regardless of whether it is assigned to a user or a resource. The distinction between a user attribute and a resource attribute is made at the time of assignment with the `GRANT ATTRIBUTE` command.
+
 #### `CREATE ATTRIBUTE`
 
 Defines a new attribute that can be used in ABAC policies.
 
 **Syntax:**
 ```cql
-CREATE (USER | RESOURCE) ATTRIBUTE <attribute_name>
+CREATE ATTRIBUTE [IF NOT EXISTS] <attribute_name>
     WITH TYPE <data_type>
     [AND VALUES IN (<value1>, <value2>, ...)];
 ```
@@ -41,7 +43,7 @@ Drops an existing attribute definition.
 
 **Syntax:**
 ```cql
-DROP (USER | RESOURCE) ATTRIBUTE [IF EXISTS] <attribute_name>;
+DROP ATTRIBUTE [IF EXISTS] <attribute_name>;
 ```
 
 #### `GRANT ATTRIBUTE`
@@ -72,12 +74,13 @@ Creates a new ABAC policy rule.
 
 **Syntax:**
 ```cql
-CREATE RULE <rule_name>
+CREATE RULE [IF NOT EXISTS] <rule_name>
     FOR <permissions>
     [ON <resource_type>]
     OF USER ATTRIBUTE <conditions>
     [AND RESOURCE ATTRIBUTE <conditions>]
-    [AND ENVIRONMENT ATTRIBUTE <conditions>];
+    [AND ENVIRONMENT ATTRIBUTE <conditions>]
+    WITH EFFECT (GRANT | DENY);
 ```
 
 #### `DROP RULE`
@@ -86,7 +89,7 @@ Drops an existing ABAC policy rule.
 
 **Syntax:**
 ```cql
-DROP RULE <rule_name>;
+DROP RULE [IF EXISTS] <rule_name>;
 ```
 
 ## 3. Proposed Database Schema
@@ -164,7 +167,8 @@ CREATE TABLE system_auth.abac_rules (
     resource_type text,
     user_attribute_conditions map<text, text>,
     resource_attribute_conditions map<text, text>,
-    environment_attribute_conditions map<text, text>
+    environment_attribute_conditions map<text, text>,
+    effect text
 );
 ```
 
@@ -176,3 +180,4 @@ CREATE TABLE system_auth.abac_rules (
 *   `user_attribute_conditions`: A map of user attributes and their required values.
 *   `resource_attribute_conditions`: A map of resource attributes and their required values.
 *   `environment_attribute_conditions`: A map of environment attributes and their required values.
+*   `effect`: The effect of the policy, which can be either `GRANT` or `DENY`.
