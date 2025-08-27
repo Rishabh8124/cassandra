@@ -76,7 +76,7 @@ This table stores the ABAC policy rules.
 CREATE TABLE system_auth.abac_rules (
     rule_name text PRIMARY KEY,
     permissions set<text>,
-    resource_type text,
+    resource text,
     user_attribute_conditions map<text, text>,
     resource_attribute_conditions map<text, text>,
     environment_attribute_conditions map<text, text>,
@@ -88,7 +88,7 @@ CREATE TABLE system_auth.abac_rules (
 
 *   `rule_name`: The unique name of the rule.
 *   `permissions`: The set of permissions being granted or denied.
-*   `resource_type`: The type of resource the rule applies to.
+*   `resource`: The name of the resource or the resource type (e.g., 'my_table' or 'TABLE').
 *   `user_attribute_conditions`: A map of user attributes and their required values.
 *   `resource_attribute_conditions`: A map of resource attributes and their required values.
 *   `environment_attribute_conditions`: A map of environment attributes and their required values.

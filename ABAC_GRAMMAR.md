@@ -120,7 +120,7 @@ Creates a new ABAC policy rule.
 ```cql
 CREATE RULE [IF NOT EXISTS] <rule_name>
     FOR <permissions>
-    [ON <resource_type>]
+    ON <resource>
     OF USER ATTRIBUTE <conditions>
     [AND RESOURCE ATTRIBUTE <conditions>]
     [AND ENVIRONMENT ATTRIBUTE <conditions>]
@@ -132,7 +132,7 @@ CREATE RULE [IF NOT EXISTS] <rule_name>
 createRuleStatement:
     K_CREATE K_RULE (K_IF K_NOT K_EXISTS)? ruleName=cqlIdentifier
     K_FOR permissions=permissionSet
-    (K_ON resourceType=(K_TABLE | K_KEYSPACE | ...))?
+    K_ON resource=resourceIdentifier
     K_OF K_USER K_ATTRIBUTE userConditions=abacConditions
     (K_AND K_RESOURCE K_ATTRIBUTE resourceConditions=abacConditions)?
     (K_AND K_ENVIRONMENT K_ATTRIBUTE envConditions=abacConditions)?
