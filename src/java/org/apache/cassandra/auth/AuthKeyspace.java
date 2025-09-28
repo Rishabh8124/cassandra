@@ -61,10 +61,23 @@ public final class AuthKeyspace
     public static final String CIDR_PERMISSIONS = "cidr_permissions";
     public static final String CIDR_GROUPS = "cidr_groups";
     public static final String IDENTITY_TO_ROLES = "identity_to_role";
-    public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES, ROLE_MEMBERS, ROLE_PERMISSIONS,
-                                                                  RESOURCE_ROLE_INDEX, NETWORK_PERMISSIONS,
-                                                                  CIDR_PERMISSIONS, CIDR_GROUPS,
-                                                                  IDENTITY_TO_ROLES);
+    public static final String ATTRIBUTE_DEFINITIONS = "attribute_definitions";
+    public static final String USER_ATTRIBUTE_VALUES = "user_attribute_values";
+    public static final String RESOURCE_ATTRIBUTE_VALUES = "resource_attribute_values";
+    public static final String ABAC_RULES = "abac_rules";
+
+    public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES,
+                                                                  ROLE_MEMBERS,
+                                                                  ROLE_PERMISSIONS,
+                                                                  RESOURCE_ROLE_INDEX,
+                                                                  NETWORK_PERMISSIONS,
+                                                                  CIDR_PERMISSIONS,
+                                                                  CIDR_GROUPS,
+                                                                  IDENTITY_TO_ROLES,
+                                                                  ATTRIBUTE_DEFINITIONS,
+                                                                  USER_ATTRIBUTE_VALUES,
+                                                                  RESOURCE_ATTRIBUTE_VALUES,
+                                                                  ABAC_RULES);
 
     public static final long SUPERUSER_SETUP_DELAY = SUPERUSER_SETUP_DELAY_MS.getLong();
 
@@ -149,6 +162,48 @@ public final class AuthKeyspace
           CIDR_GROUPS_CQL
     );
 
+    public static String ATTRIBUTE_DEFINITIONS_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                     + "attribute_name text PRIMARY KEY,"
+                                                     + "attribute_type text,"
+                                                     + "allowed_values set<text>)";
+    private static final TableMetadata AttributeDefinitions =
+    parse(ATTRIBUTE_DEFINITIONS,
+          "ABAC attribute definitions",
+          ATTRIBUTE_DEFINITIONS_CQL);
+
+    public static String USER_ATTRIBUTE_VALUES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                     + "user_name text,"
+                                                     + "attribute_name text,"
+                                                     + "attribute_value text,"
+                                                     + "PRIMARY KEY(user_name, attribute_name))";
+    private static final TableMetadata UserAttributeValues =
+    parse(USER_ATTRIBUTE_VALUES,
+          "ABAC user attribute values",
+          USER_ATTRIBUTE_VALUES_CQL);
+
+    public static String RESOURCE_ATTRIBUTE_VALUES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                         + "resource_name text,"
+                                                         + "attribute_name text,"
+                                                         + "attribute_value text,"
+                                                         + "PRIMARY KEY(resource_name, attribute_name))";
+    private static final TableMetadata ResourceAttributeValues =
+    parse(RESOURCE_ATTRIBUTE_VALUES,
+          "ABAC resource attribute values",
+          RESOURCE_ATTRIBUTE_VALUES_CQL);
+
+    public static String ABAC_RULES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                          + "rule_name text PRIMARY KEY,"
+                                          + "permissions set<text>,"
+                                          + "resource text,"
+                                          + "user_attribute_conditions map<text, text>,"
+                                          + "resource_attribute_conditions map<text, text>,"
+                                          + "environment_attribute_conditions map<text, text>,"
+                                          + "effect text)";
+    private static final TableMetadata AbacRules =
+    parse(ABAC_RULES,
+          "ABAC rules",
+          ABAC_RULES_CQL);
+
     private static TableMetadata parse(String name, String description, String cql)
     {
         return CreateTableStatement.parse(format(cql, name), SchemaConstants.AUTH_KEYSPACE_NAME)
@@ -162,8 +217,17 @@ public final class AuthKeyspace
     {
         return KeyspaceMetadata.create(SchemaConstants.AUTH_KEYSPACE_NAME,
                                        KeyspaceParams.simple(Math.max(DEFAULT_RF, DatabaseDescriptor.getDefaultKeyspaceRF())),
-                                       Tables.of(Roles, RoleMembers, RolePermissions,
-                                                 ResourceRoleIndex, NetworkPermissions,
-                                                 CIDRPermissions, CIDRGroups, IdentityToRoles));
+                                       Tables.of(Roles,
+                                                 RoleMembers,
+                                                 RolePermissions,
+                                                 ResourceRoleIndex,
+                                                 NetworkPermissions,
+                                                 CIDRPermissions,
+                                                 CIDRGroups,
+                                                 IdentityToRoles,
+                                                 AttributeDefinitions,
+                                                 UserAttributeValues,
+                                                 ResourceAttributeValues,
+                                                 AbacRules));
     }
 }

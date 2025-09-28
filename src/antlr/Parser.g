@@ -284,6 +284,13 @@ cqlStatement returns [CQLStatement.Raw stmt]
     | st45=copyTableStatement              { $stmt = st45; }
     | st46=batchTxnStatement               { $stmt = st46; }
     | st47=letStatement                    { $stmt = st47; }
+    | st48=createAttributeStatement        { $stmt = st48; }
+    | st49=alterAttributeStatement         { $stmt = st49; }
+    | st50=dropAttributeStatement          { $stmt = st50; }
+    | st51=grantAttributeStatement         { $stmt = st51; }
+    | st52=revokeAttributeStatement        { $stmt = st52; }
+    | st53=createRuleStatement             { $stmt = st53; }
+    | st54=dropRuleStatement               { $stmt = st54; }
     ;
 
 /*
@@ -1728,6 +1735,76 @@ describeStatement returns [DescribeStatement stmt]
     ( K_WITH K_INTERNALS { $stmt.withInternalDetails(); } )?
     ;
 
+createAttributeStatement returns [CreateAttributeStatement.Raw stmt]
+    @init {
+        boolean ifNotExists = false;
+        List<Term.Raw> values = null;
+    }
+    : K_CREATE K_ATTRIBUTE (K_IF K_NOT K_EXISTS { ifNotExists = true; })?
+      name=noncol_ident
+      K_WITH K_TYPE type=comparatorType
+      ( K_AND K_VALUES K_IN '(' ( v1=term { if (values == null) values = new ArrayList<Term.Raw>(); values.add(v1); } (',' vn=term { values.add(vn); } )* )? ')' )?
+      { $stmt = new CreateAttributeStatement.Raw(name, type, values, ifNotExists); }
+    ;
+
+alterAttributeStatement returns [AlterAttributeStatement.Raw stmt]
+    @init {
+        CQL3Type.Raw type = null;
+        List<Term.Raw> valuesToAdd = null;
+        List<Term.Raw> valuesToDrop = null;
+    }
+    : K_ALTER K_ATTRIBUTE name=noncol_ident
+      ( K_SET K_TYPE '=' newType=comparatorType { type = newType; } )?
+      ( K_ADD K_VALUES '=' '(' ( v1=term { if (valuesToAdd == null) valuesToAdd = new ArrayList<Term.Raw>(); valuesToAdd.add(v1); } (',' vn=term { valuesToAdd.add(vn); } )* )? ')' )?
+      ( K_DROP K_VALUES '=' '(' ( v1=term { if (valuesToDrop == null) valuesToDrop = new ArrayList<Term.Raw>(); valuesToDrop.add(v1); } (',' vn=term { valuesToDrop.add(vn); } )* )? ')' )?
+      { $stmt = new AlterAttributeStatement.Raw(name, type, valuesToAdd, valuesToDrop); }
+    ;
+
+dropAttributeStatement returns [DropAttributeStatement.Raw stmt]
+    @init { boolean ifExists = false; }
+    : K_DROP K_ATTRIBUTE (K_IF K_EXISTS { ifExists = true; })? name=noncol_ident
+      { $stmt = new DropAttributeStatement.Raw(name, ifExists); }
+    ;
+
+grantAttributeStatement returns [GrantAttributeStatement.Raw stmt]
+    : K_GRANT K_USER K_ATTRIBUTE attrName=noncol_ident '=' attrValue=term K_TO userName=userOrRoleName
+      { $stmt = new GrantAttributeStatement.Raw(userName, attrName, attrValue); }
+    | K_GRANT K_RESOURCE K_ATTRIBUTE attrName=noncol_ident '=' attrValue=term K_TO res=resource
+      { $stmt = new GrantAttributeStatement.Raw($res.res, attrName, attrValue); }
+    ;
+
+revokeAttributeStatement returns [RevokeAttributeStatement.Raw stmt]
+    : K_REVOKE K_USER K_ATTRIBUTE attrName=noncol_ident K_FROM userName=userOrRoleName
+      { $stmt = new RevokeAttributeStatement.Raw(userName, attrName); }
+    | K_REVOKE K_RESOURCE K_ATTRIBUTE attrName=noncol_ident K_FROM res=resource
+      { $stmt = new RevokeAttributeStatement.Raw($res.res, attrName); }
+    ;
+
+createRuleStatement returns [CreateRuleStatement.Raw stmt]
+    @init {
+        boolean ifNotExists = false;
+        IResource res = null;
+        Maps.Literal userConditions = null;
+        Maps.Literal resourceConditions = null;
+        Maps.Literal envConditions = null;
+        String effect;
+    }
+    : K_CREATE K_RULE (K_IF K_NOT K_EXISTS { ifNotExists = true; })? ruleName=noncol_ident
+      K_FOR perms=permissionOrAll
+      (K_ON r=resource { res = $r.res; } )?
+      K_OF K_USER K_ATTRIBUTE userConds=fullMapLiteral { userConditions = userConds; }
+      (K_AND K_RESOURCE K_ATTRIBUTE resConds=fullMapLiteral { resourceConditions = resConds; } )?
+      (K_AND K_ENVIRONMENT K_ATTRIBUTE envConds=fullMapLiteral { envConditions = envConds; } )?
+      K_WITH K_EFFECT '(' e=(K_GRANT | K_DENY) ')'
+      { $stmt = new CreateRuleStatement.Raw(ruleName, $perms.perms, res, userConditions, resourceConditions, envConditions, $e.text, ifNotExists); }
+    ;
+
+dropRuleStatement returns [DropRuleStatement.Raw stmt]
+    @init { boolean ifExists = false; }
+    : K_DROP K_RULE (K_IF K_EXISTS { ifExists = true; })? ruleName=noncol_ident
+      { $stmt = new DropRuleStatement.Raw(ruleName, ifExists); }
+    ;
+
 /** DEFINITIONS **/
 
 // Like ident, but for case where we take a column name that can be the legacy super column empty name. Importantly,
@@ -2355,5 +2432,12 @@ basic_unreserved_keyword returns [String str]
         | K_LET
         | K_THEN
         | K_TRANSACTION
+        | K_ATTRIBUTE
+        | K_RULE
+        | K_RESOURCE
+        | K_ENVIRONMENT
+        | K_EFFECT
+        | K_FOR
+        | K_DENY
         ) { $str = $k.text; }
     ;

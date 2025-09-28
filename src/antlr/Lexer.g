@@ -151,6 +151,15 @@ K_NORECURSIVE: N O R E C U R S I V E;
 K_MBEAN:       M B E A N;
 K_MBEANS:      M B E A N S;
 
+// ABAC keywords
+K_ATTRIBUTE:   A T T R I B U T E;
+K_RULE:        R U L E;
+K_RESOURCE:    R E S O U R C E;
+K_ENVIRONMENT: E N V I R O N M E N T;
+K_EFFECT:      E F F E C T;
+K_FOR:         F O R;
+K_DENY:        D E N Y;
+
 K_USER:        U S E R;
 K_USERS:       U S E R S;
 K_ROLE:        R O L E;
