@@ -72,7 +72,12 @@ public class GrantAttributeStatement extends AlterSchemaStatement
         String columnName = attributeType.equalsIgnoreCase("USER") ? "user_name" : "resource_name";
 
         String insertQuery = String.format("INSERT INTO system_auth.%s (%s, attribute_name, attribute_value) VALUES (?, ?, ?)", tableName, columnName);
-        QueryProcessor.executeInternal(insertQuery, name, attributeName, attributeValue.getText());
+        String valueToStore = attributeValue.getText();
+        if (valueToStore != null && valueToStore.length() > 1 && valueToStore.startsWith("'") && valueToStore.endsWith("'"))
+        {
+            valueToStore = valueToStore.substring(1, valueToStore.length() - 1);
+        }
+        QueryProcessor.executeInternal(insertQuery, name, attributeName, valueToStore);
 
         return new ResultMessage.SchemaChange(schemaChangeEvent(null));
     }

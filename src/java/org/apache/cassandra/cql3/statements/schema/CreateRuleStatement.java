@@ -98,7 +98,7 @@ public class CreateRuleStatement extends AlterSchemaStatement
     @Override
     public ResultMessage execute(QueryState state, QueryOptions options, Dispatcher.RequestTime requestTime) throws RequestExecutionException, RequestValidationException
     {
-        String insertQuery = "INSERT INTO system_auth.abac_rules (rule_name, permissions, resource_name, user_attribute_conditions, resource_attribute_conditions, environment_attribute_conditions, effect) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String insertQuery = "INSERT INTO system_auth.abac_rules (rule_name, permissions, resource, user_attribute_conditions, resource_attribute_conditions, environment_attribute_conditions, effect) VALUES (?, ?, ?, ?, ?, ?, ?)";
         if (ifNotExists) {
             insertQuery += " IF NOT EXISTS";
         }
@@ -108,7 +108,13 @@ public class CreateRuleStatement extends AlterSchemaStatement
         Map<String, String> envConds = convert(envConditions);
         String resourceName = resource != null ? resource.getName() : null;
 
-        QueryProcessor.executeInternal(insertQuery, ruleName, permissions, resourceName, userConds, resourceConds, envConds, effect);
+        Set<String> permissionNames = new java.util.HashSet<>();
+        for (Permission p : permissions)
+        {
+            permissionNames.add(p.name());
+        }
+
+        QueryProcessor.executeInternal(insertQuery, ruleName, permissionNames, resourceName, userConds, resourceConds, envConds, effect);
 
         return new ResultMessage.SchemaChange(schemaChangeEvent(null));
     }
