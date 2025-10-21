@@ -1791,12 +1791,11 @@ createRuleStatement returns [CreateRuleStatement.Raw stmt]
     }
     : K_CREATE K_RULE (K_IF K_NOT K_EXISTS { ifNotExists = true; })? ruleName=noncol_ident
       K_FOR perms=permissionOrAll
-      (K_ON r=resource { res = $r.res; } )?
       K_OF K_USER K_ATTRIBUTE userConds=fullMapLiteral { userConditions = userConds; }
       (K_AND K_RESOURCE K_ATTRIBUTE resConds=fullMapLiteral { resourceConditions = resConds; } )?
       (K_AND K_ENVIRONMENT K_ATTRIBUTE envConds=fullMapLiteral { envConditions = envConds; } )?
       K_WITH K_EFFECT '(' e=(K_GRANT | K_DENY) ')'
-      { $stmt = new CreateRuleStatement.Raw(ruleName, $perms.perms, res, userConditions, resourceConditions, envConditions, $e.text, ifNotExists); }
+      { $stmt = new CreateRuleStatement.Raw(ruleName, $perms.perms, userConditions, resourceConditions, envConditions, $e.text, ifNotExists); }
     ;
 
 dropRuleStatement returns [DropRuleStatement.Raw stmt]

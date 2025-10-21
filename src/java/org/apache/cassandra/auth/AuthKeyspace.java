@@ -194,7 +194,6 @@ public final class AuthKeyspace
     public static String ABAC_RULES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
                                           + "rule_name text PRIMARY KEY,"
                                           + "permissions set<text>,"
-                                          + "resource text,"
                                           + "user_attribute_conditions map<text, text>,"
                                           + "resource_attribute_conditions map<text, text>,"
                                           + "environment_attribute_conditions map<text, text>,"

@@ -22,7 +22,6 @@ import java.util.Set;
 
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.audit.AuditLogEntryType;
-import org.apache.cassandra.auth.IResource;
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryOptions;
@@ -45,7 +44,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
 {
     private final String ruleName;
     private final Set<Permission> permissions;
-    private final IResource resource;
     private final Maps.Literal userConditions;
     private final Maps.Literal resourceConditions;
     private final Maps.Literal envConditions;
@@ -54,7 +52,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
 
     public CreateRuleStatement(String ruleName,
                                Set<Permission> permissions,
-                               IResource resource,
                                Maps.Literal userConditions,
                                Maps.Literal resourceConditions,
                                Maps.Literal envConditions,
@@ -64,7 +61,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
         super("system_auth");
         this.ruleName = ruleName;
         this.permissions = permissions;
-        this.resource = resource;
         this.userConditions = userConditions;
         this.resourceConditions = resourceConditions;
         this.envConditions = envConditions;
@@ -98,7 +94,7 @@ public class CreateRuleStatement extends AlterSchemaStatement
     @Override
     public ResultMessage execute(QueryState state, QueryOptions options, Dispatcher.RequestTime requestTime) throws RequestExecutionException, RequestValidationException
     {
-        String insertQuery = "INSERT INTO system_auth.abac_rules (rule_name, permissions, resource, user_attribute_conditions, resource_attribute_conditions, environment_attribute_conditions, effect) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String insertQuery = "INSERT INTO system_auth.abac_rules (rule_name, permissions, user_attribute_conditions, resource_attribute_conditions, environment_attribute_conditions, effect) VALUES (?, ?, ?, ?, ?, ?)";
         if (ifNotExists) {
             insertQuery += " IF NOT EXISTS";
         }
@@ -106,7 +102,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
         Map<String, String> userConds = convert(userConditions);
         Map<String, String> resourceConds = convert(resourceConditions);
         Map<String, String> envConds = convert(envConditions);
-        String resourceName = resource != null ? resource.getName() : null;
 
         Set<String> permissionNames = new java.util.HashSet<>();
         for (Permission p : permissions)
@@ -114,7 +109,7 @@ public class CreateRuleStatement extends AlterSchemaStatement
             permissionNames.add(p.name());
         }
 
-        QueryProcessor.executeInternal(insertQuery, ruleName, permissionNames, resourceName, userConds, resourceConds, envConds, effect);
+        QueryProcessor.executeInternal(insertQuery, ruleName, permissionNames, userConds, resourceConds, envConds, effect);
 
         return new ResultMessage.SchemaChange(schemaChangeEvent(null));
     }
@@ -140,7 +135,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
     {
         private final ColumnIdentifier ruleName;
         private final Set<Permission> permissions;
-        private final IResource resource;
         private final Maps.Literal userConditions;
         private final Maps.Literal resourceConditions;
         private final Maps.Literal envConditions;
@@ -149,7 +143,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
 
         public Raw(ColumnIdentifier ruleName,
                    Set<Permission> permissions,
-                   IResource resource,
                    Maps.Literal userConditions,
                    Maps.Literal resourceConditions,
                    Maps.Literal envConditions,
@@ -158,7 +151,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
         {
             this.ruleName = ruleName;
             this.permissions = permissions;
-            this.resource = resource;
             this.userConditions = userConditions;
             this.resourceConditions = resourceConditions;
             this.envConditions = envConditions;
@@ -170,7 +162,6 @@ public class CreateRuleStatement extends AlterSchemaStatement
         {
             return new CreateRuleStatement(ruleName.toString(),
                                            permissions,
-                                           resource,
                                            userConditions,
                                            resourceConditions,
                                            envConditions,

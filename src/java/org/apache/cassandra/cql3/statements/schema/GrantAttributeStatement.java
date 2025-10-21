@@ -29,6 +29,7 @@ import org.apache.cassandra.cql3.terms.Term;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.schema.Keyspaces;
 import org.apache.cassandra.schema.Keyspaces.KeyspacesDiff;
 import org.apache.cassandra.service.ClientState;
@@ -42,14 +43,16 @@ public class GrantAttributeStatement extends AlterSchemaStatement
 {
     private final String attributeType; // "USER" or "RESOURCE"
     private final String name;
+    private final IResource resource;
     private final String attributeName;
     private final Term.Raw attributeValue;
 
-    public GrantAttributeStatement(String attributeType, String name, String attributeName, Term.Raw attributeValue)
+    public GrantAttributeStatement(String attributeType, String name, IResource resource, String attributeName, Term.Raw attributeValue)
     {
         super("system_auth");
         this.attributeType = attributeType;
         this.name = name;
+        this.resource = resource;
         this.attributeName = attributeName;
         this.attributeValue = attributeValue;
     }
@@ -57,7 +60,15 @@ public class GrantAttributeStatement extends AlterSchemaStatement
     @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.AUTHORIZE);
+        if (attributeType.equalsIgnoreCase("USER"))
+        {
+            if (!state.getUser().isSuper())
+                throw new UnauthorizedException("Only superusers can grant user attributes.");
+        }
+        else // RESOURCE
+        {
+            state.ensurePermission(Permission.AUTHORIZE, resource);
+        }
     }
 
     @Override
@@ -127,7 +138,8 @@ public class GrantAttributeStatement extends AlterSchemaStatement
         public GrantAttributeStatement prepare(ClientState state)
         {
             String name = attributeType.equals("USER") ? user.getName() : resource.getName();
-            return new GrantAttributeStatement(attributeType, name, attributeName.toString(), attributeValue);
+            IResource targetResource = attributeType.equals("USER") ? null : resource;
+            return new GrantAttributeStatement(attributeType, name, targetResource, attributeName.toString(), attributeValue);
         }
     }
 }

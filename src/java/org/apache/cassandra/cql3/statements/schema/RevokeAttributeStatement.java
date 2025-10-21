@@ -11,7 +11,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -28,6 +28,7 @@ import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
+import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.schema.Keyspaces;
 import org.apache.cassandra.schema.Keyspaces.KeyspacesDiff;
 import org.apache.cassandra.service.ClientState;
@@ -41,20 +42,30 @@ public class RevokeAttributeStatement extends AlterSchemaStatement
 {
     private final String attributeType; // "USER" or "RESOURCE"
     private final String name;
+    private final IResource resource;
     private final String attributeName;
 
-    public RevokeAttributeStatement(String attributeType, String name, String attributeName)
+    public RevokeAttributeStatement(String attributeType, String name, IResource resource, String attributeName)
     {
         super("system_auth");
         this.attributeType = attributeType;
         this.name = name;
+        this.resource = resource;
         this.attributeName = attributeName;
     }
 
     @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.AUTHORIZE);
+        if (attributeType.equalsIgnoreCase("USER"))
+        {
+            if (!state.getUser().isSuper())
+                throw new UnauthorizedException("Only superusers can revoke user attributes.");
+        }
+        else // RESOURCE
+        {
+            state.ensurePermission(Permission.AUTHORIZE, resource);
+        }
     }
 
     @Override
@@ -116,7 +127,8 @@ public class RevokeAttributeStatement extends AlterSchemaStatement
         public RevokeAttributeStatement prepare(ClientState state)
         {
             String name = attributeType.equals("USER") ? user.getName() : resource.getName();
-            return new RevokeAttributeStatement(attributeType, name, attributeName.toString());
+            IResource targetResource = attributeType.equals("USER") ? null : resource;
+            return new RevokeAttributeStatement(attributeType, name, targetResource, attributeName.toString());
         }
     }
 }
