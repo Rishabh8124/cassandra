@@ -129,8 +129,30 @@ public class CassandraAuthorizer implements IAuthorizer
             resourceAttributes.put(row.getString("attribute_name"), row.getString("attribute_value"));
         }
 
-        // 3. Get environment attributes (dummy for now)
+        // 3. Get environment attributes
         Map<String, String> envAttributes = new HashMap<>();
+        try
+        {
+            String envConfigsQuery = "SELECT config_name, values FROM system_auth.env_attribute_configs";
+            UntypedResultSet configs = process(envConfigsQuery, authReadConsistencyLevel());
+
+            String currentDay = java.time.ZonedDateTime.now().getDayOfWeek().toString();
+
+            for (UntypedResultSet.Row config : configs)
+            {
+                String configName = config.getString("config_name");
+                if ("weekday".equals(configName) && config.has("values"))
+                {
+                    Set<String> values = config.getSet("values", UTF8Type.instance);
+                    if (values.contains(currentDay))
+                        envAttributes.put("weekday", "true");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            logger.warn("Failed to evaluate environment attribute configs", e);
+        }
 
         // 4. Get all ABAC rules
         String rulesQuery = "SELECT * FROM system_auth.abac_rules";
@@ -145,14 +167,14 @@ public class CassandraAuthorizer implements IAuthorizer
             logger.info("Evaluating rule: {}", rule.getString("rule_name"));
 
             Map<String, String> ruleUserConditions = rule.has("user_attribute_conditions") ? rule.getMap("user_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
-            logger.info("Rule User Conditions: {}", ruleUserConditions);
             Map<String, String> ruleResourceConditions = rule.has("resource_attribute_conditions") ? rule.getMap("resource_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
-            logger.info("Rule Resource Conditions: {}", ruleResourceConditions);
             Map<String, String> ruleEnvironmentConditions = rule.has("environment_attribute_conditions") ? rule.getMap("environment_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
 
             boolean userConditionsMet = evaluateConditions(ruleUserConditions, userAttributes);
             boolean resourceConditionsMet = evaluateConditions(ruleResourceConditions, resourceAttributes);
             boolean environmentConditionsMet = evaluateConditions(ruleEnvironmentConditions, envAttributes);
+
+            logger.info("Conditions met - U, R, E : {}, {}, {}", userConditionsMet, resourceConditionsMet, environmentConditionsMet);
 
             if (userConditionsMet && resourceConditionsMet && environmentConditionsMet)
             {
@@ -198,7 +220,7 @@ public class CassandraAuthorizer implements IAuthorizer
         {
             String requiredAttributeName = condition.getKey();
             String requiredAttributeValue = condition.getValue();
-            String actualValue = attributes.get(requiredAttributeName.substring(1, requiredAttributeName.length()-1));
+            String actualValue = attributes.get(requiredAttributeName);
 
             if (actualValue == null || !actualValue.equals(requiredAttributeValue))
             {

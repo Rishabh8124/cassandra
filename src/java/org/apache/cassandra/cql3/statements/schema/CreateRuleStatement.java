@@ -79,6 +79,13 @@ public class CreateRuleStatement extends AlterSchemaStatement
     {
     }
 
+    private static String stripQuotes(String text)
+    {
+        if (text != null && text.length() > 1 && text.startsWith("'") && text.endsWith("'"))
+            return text.substring(1, text.length() - 1);
+        return text;
+    }
+
     private static Map<String, String> convert(Maps.Literal map)
     {
         if (map == null)
@@ -86,7 +93,7 @@ public class CreateRuleStatement extends AlterSchemaStatement
         Map<String, String> result = new java.util.HashMap<>();
         for (org.apache.cassandra.utils.Pair<Term.Raw, Term.Raw> entry : map.entries)
         {
-            result.put(entry.left.getText(), entry.right.getText());
+            result.put(stripQuotes(entry.left.getText()), stripQuotes(entry.right.getText()));
         }
         return result;
     }

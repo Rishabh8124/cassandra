@@ -43,14 +43,6 @@ public final class AuthKeyspace
 
     public static final int DEFAULT_RF = CassandraRelevantProperties.SYSTEM_AUTH_DEFAULT_RF.getInt();
 
-    /**
-     * Generation is used as a timestamp for automatic table creation on startup.
-     * If you make any changes to the tables below, make sure to increment the
-     * generation and document your change here.
-     *
-     * gen 0: original definition in 3.0
-     * gen 1: compression chunk length reduced to 16KiB, memtable_flush_period_in_ms now unset on all tables in 4.0
-     */
     public static final long GENERATION = 1;
 
     public static final String ROLES = "roles";
@@ -65,6 +57,7 @@ public final class AuthKeyspace
     public static final String USER_ATTRIBUTE_VALUES = "user_attribute_values";
     public static final String RESOURCE_ATTRIBUTE_VALUES = "resource_attribute_values";
     public static final String ABAC_RULES = "abac_rules";
+    public static final String ENV_ATTRIBUTE_CONFIGS = "env_attribute_configs";
 
     public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES,
                                                                   ROLE_MEMBERS,
@@ -77,7 +70,8 @@ public final class AuthKeyspace
                                                                   ATTRIBUTE_DEFINITIONS,
                                                                   USER_ATTRIBUTE_VALUES,
                                                                   RESOURCE_ATTRIBUTE_VALUES,
-                                                                  ABAC_RULES);
+                                                                  ABAC_RULES,
+                                                                  ENV_ATTRIBUTE_CONFIGS);
 
     public static final long SUPERUSER_SETUP_DELAY = SUPERUSER_SETUP_DELAY_MS.getLong();
 
@@ -203,6 +197,14 @@ public final class AuthKeyspace
           "ABAC rules",
           ABAC_RULES_CQL);
 
+    public static String ENV_ATTRIBUTE_CONFIGS_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                       + "config_name text PRIMARY KEY,"
+                                                       + "values set<text>)";
+    private static final TableMetadata EnvAttributeConfigs =
+    parse(ENV_ATTRIBUTE_CONFIGS,
+          "ABAC environment attribute configs",
+          ENV_ATTRIBUTE_CONFIGS_CQL);
+
     private static TableMetadata parse(String name, String description, String cql)
     {
         return CreateTableStatement.parse(format(cql, name), SchemaConstants.AUTH_KEYSPACE_NAME)
@@ -227,6 +229,7 @@ public final class AuthKeyspace
                                                  AttributeDefinitions,
                                                  UserAttributeValues,
                                                  ResourceAttributeValues,
-                                                 AbacRules));
+                                                 AbacRules,
+                                                 EnvAttributeConfigs));
     }
 }
