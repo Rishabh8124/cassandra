@@ -144,8 +144,11 @@ public class CassandraAuthorizer implements IAuthorizer
                 if ("weekday".equals(configName) && config.has("values"))
                 {
                     Set<String> values = config.getSet("values", UTF8Type.instance);
-                    if (values.contains(currentDay))
+                    if (values.contains(currentDay)) {
                         envAttributes.put("weekday", "true");
+                    } else {
+                        envAttributes.put("weekday", "false");
+                    }
                 }
             }
         }
@@ -164,8 +167,6 @@ public class CassandraAuthorizer implements IAuthorizer
         // 5. Evaluate rules
         for (UntypedResultSet.Row rule : rulesRows)
         {
-            logger.info("Evaluating rule: {}", rule.getString("rule_name"));
-
             Map<String, String> ruleUserConditions = rule.has("user_attribute_conditions") ? rule.getMap("user_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
             Map<String, String> ruleResourceConditions = rule.has("resource_attribute_conditions") ? rule.getMap("resource_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
             Map<String, String> ruleEnvironmentConditions = rule.has("environment_attribute_conditions") ? rule.getMap("environment_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
@@ -204,16 +205,6 @@ public class CassandraAuthorizer implements IAuthorizer
         if (conditions == null || conditions.isEmpty())
         {
             return true; // No conditions means they are met
-        }
-
-        logger.info("Attribute list passed to evaluate");
-        for (Map.Entry<String, String> condition : attributes.entrySet()) {
-            logger.info("Attribute: {} = {}", condition.getKey(), condition.getValue());
-        }
-
-        logger.info("Condition list passed to evaluate");
-        for (Map.Entry<String, String> condition : conditions.entrySet()) {
-            logger.info("Condition: {} = {}", condition.getKey(), condition.getValue());
         }
 
         for (Map.Entry<String, String> condition : conditions.entrySet())
