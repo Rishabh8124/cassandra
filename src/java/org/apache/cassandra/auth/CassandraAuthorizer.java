@@ -213,12 +213,19 @@ public class CassandraAuthorizer implements IAuthorizer
             String requiredAttributeValue = condition.getValue();
             String actualValue = attributes.get(requiredAttributeName);
 
-            if (actualValue == null || !actualValue.equals(requiredAttributeValue))
-            {
-                return false; // Condition not met
-            }
+            if (actualValue == null) return false; // Condition not met if attribute is missing
+
+            // If the values are directly equal, the condition is met.
+            if (actualValue.equals(requiredAttributeValue)) continue;
+
+            // If not equal, check if the actual value is a descendant of the required value.
+            if (AttributeHierarchyManager.instance.check(requiredAttributeName, actualValue, requiredAttributeValue)) continue;
+
+            // If neither direct equality nor the hierarchy check passes, the condition is not met.
+            return false;
         }
-        return true; // All conditions met
+
+        return true; // All conditions were met
     }
 
     public Set<Permission> grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
@@ -528,6 +535,7 @@ public class CassandraAuthorizer implements IAuthorizer
     public void setup()
     {
         authorizeRoleStatement = prepare(ROLE, AuthKeyspace.ROLE_PERMISSIONS);
+        AttributeHierarchyManager.instance.initialize();
     }
 
     private SelectStatement prepare(String entityname, String permissionsTable)

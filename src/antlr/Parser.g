@@ -291,6 +291,7 @@ cqlStatement returns [CQLStatement.Raw stmt]
     | st52=revokeAttributeStatement        { $stmt = st52; }
     | st53=createRuleStatement             { $stmt = st53; }
     | st54=dropRuleStatement               { $stmt = st54; }
+    | st55=createHierarchyEdgeStatement    { $stmt = st55; }
     ;
 
 /*
@@ -1804,6 +1805,14 @@ dropRuleStatement returns [DropRuleStatement.Raw stmt]
       { $stmt = new DropRuleStatement.Raw(ruleName, ifExists); }
     ;
 
+createHierarchyEdgeStatement returns [CreateHierarchyEdgeStatement.Raw stmt]
+    : K_CREATE K_HIERARCHY_EDGE
+      attributeName=noncol_ident
+      K_FROM parentValue=term
+      K_TO childValue=term
+      { $stmt = new CreateHierarchyEdgeStatement.Raw(attributeName, parentValue, childValue); }
+    ;
+
 /** DEFINITIONS **/
 
 // Like ident, but for case where we take a column name that can be the legacy super column empty name. Importantly,
@@ -2438,5 +2447,6 @@ basic_unreserved_keyword returns [String str]
         | K_EFFECT
         | K_FOR
         | K_DENY
+        | K_HIERARCHY_EDGE
         ) { $str = $k.text; }
     ;

@@ -58,6 +58,8 @@ public final class AuthKeyspace
     public static final String RESOURCE_ATTRIBUTE_VALUES = "resource_attribute_values";
     public static final String ABAC_RULES = "abac_rules";
     public static final String ENV_ATTRIBUTE_CONFIGS = "env_attribute_configs";
+    public static final String ATTRIBUTE_EDGES = "attribute_hierarchy_edges";
+    public static final String HIERARCHY_METADATA = "hierarchy_metadata";
 
     public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES,
                                                                   ROLE_MEMBERS,
@@ -71,7 +73,9 @@ public final class AuthKeyspace
                                                                   USER_ATTRIBUTE_VALUES,
                                                                   RESOURCE_ATTRIBUTE_VALUES,
                                                                   ABAC_RULES,
-                                                                  ENV_ATTRIBUTE_CONFIGS);
+                                                                  ENV_ATTRIBUTE_CONFIGS,
+                                                                  ATTRIBUTE_EDGES,
+                                                                  HIERARCHY_METADATA);
 
     public static final long SUPERUSER_SETUP_DELAY = SUPERUSER_SETUP_DELAY_MS.getLong();
 
@@ -205,6 +209,24 @@ public final class AuthKeyspace
           "ABAC environment attribute configs",
           ENV_ATTRIBUTE_CONFIGS_CQL);
 
+    public static String ATTRIBUTE_EDGES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                               + "attribute_name text,"
+                                               + "parent text,"
+                                               + "child text,"
+                                               + "PRIMARY KEY(attribute_name, parent, child))";
+    private static final TableMetadata AttributeEdges =
+    parse(ATTRIBUTE_EDGES,
+          "ABAC attribute hierarchy edges",
+          ATTRIBUTE_EDGES_CQL);
+
+    public static String HIERARCHY_METADATA_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                  + "key text PRIMARY KEY,"
+                                                  + "last_modified timestamp)";
+    private static final TableMetadata HierarchyMetadata =
+    parse(HIERARCHY_METADATA,
+          "Timestamp for the last modification to attribute hierarchies",
+          HIERARCHY_METADATA_CQL);
+
     private static TableMetadata parse(String name, String description, String cql)
     {
         return CreateTableStatement.parse(format(cql, name), SchemaConstants.AUTH_KEYSPACE_NAME)
@@ -230,6 +252,8 @@ public final class AuthKeyspace
                                                  UserAttributeValues,
                                                  ResourceAttributeValues,
                                                  AbacRules,
-                                                 EnvAttributeConfigs));
+                                                 EnvAttributeConfigs,
+                                                 AttributeEdges,
+                                                 HierarchyMetadata));
     }
 }

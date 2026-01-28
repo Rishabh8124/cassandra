@@ -159,6 +159,7 @@ K_ENVIRONMENT: E N V I R O N M E N T;
 K_EFFECT:      E F F E C T;
 K_FOR:         F O R;
 K_DENY:        D E N Y;
+K_HIERARCHY_EDGE:   H I E R A R C H Y '_' E D G E;
 
 K_USER:        U S E R;
 K_USERS:       U S E R S;
