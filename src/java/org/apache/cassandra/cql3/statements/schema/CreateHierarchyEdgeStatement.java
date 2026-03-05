@@ -59,10 +59,9 @@ public class CreateHierarchyEdgeStatement extends AlterSchemaStatement
         this.childValue = childValue;
     }
 
-    @Override
-    public void authorize(ClientState state) throws RequestValidationException
+        public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.CREATE);
+        state.ensurePermission(Permission.ALTER_ATTRIBUTE, org.apache.cassandra.auth.RoleResource.root());
     }
 
     @Override

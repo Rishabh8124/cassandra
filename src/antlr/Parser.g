@@ -1387,7 +1387,10 @@ listPermissionsStatement returns [ListPermissionsStatement stmt]
     ;
 
 permission returns [Permission perm]
-    : p=(K_CREATE | K_ALTER | K_DROP | K_SELECT | K_MODIFY | K_AUTHORIZE | K_DESCRIBE | K_EXECUTE | K_UNMASK | K_SELECT_MASKED)
+    : p=(K_CREATE | K_ALTER | K_DROP | K_SELECT | K_MODIFY | K_AUTHORIZE | K_DESCRIBE | K_EXECUTE | K_UNMASK | K_SELECT_MASKED
+    | K_CREATE_ATTRIBUTE | K_DROP_ATTRIBUTE | K_ALTER_ATTRIBUTE | K_ASSIGN_USER_ATTRIBUTE | K_REVOKE_USER_ATTRIBUTE
+    | K_ASSIGN_RESOURCE_ATTRIBUTE | K_REVOKE_RESOURCE_ATTRIBUTE | K_CREATE_POLICY | K_DROP_POLICY | K_ALTER_POLICY
+    | K_ENABLE_POLICY | K_DISABLE_POLICY)
     { $perm = Permission.valueOf(LocalizeString.toUpperCaseLocalized($p.text)); }
     ;
 

@@ -151,6 +151,19 @@ K_NORECURSIVE: N O R E C U R S I V E;
 K_MBEAN:       M B E A N;
 K_MBEANS:      M B E A N S;
 
+K_CREATE_ATTRIBUTE:          C R E A T E '_' A T T R I B U T E;
+K_DROP_ATTRIBUTE:            D R O P '_' A T T R I B U T E;
+K_ALTER_ATTRIBUTE:           A L T E R '_' A T T R I B U T E;
+K_ASSIGN_USER_ATTRIBUTE:     A S S I G N '_' U S E R '_' A T T R I B U T E;
+K_REVOKE_USER_ATTRIBUTE:     R E V O K E '_' U S E R '_' A T T R I B U T E;
+K_ASSIGN_RESOURCE_ATTRIBUTE: A S S I G N '_' R E S O U R C E '_' A T T R I B U T E;
+K_REVOKE_RESOURCE_ATTRIBUTE: R E V O K E '_' R E S O U R C E '_' A T T R I B U T E;
+K_CREATE_POLICY:             C R E A T E '_' P O L I C Y;
+K_DROP_POLICY:               D R O P '_' P O L I C Y;
+K_ALTER_POLICY:              A L T E R '_' P O L I C Y;
+K_ENABLE_POLICY:             E N A B L E '_' P O L I C Y;
+K_DISABLE_POLICY:            D I S A B L E '_' P O L I C Y;
+
 // ABAC keywords
 K_ATTRIBUTE:   A T T R I B U T E;
 K_RULE:        R U L E;

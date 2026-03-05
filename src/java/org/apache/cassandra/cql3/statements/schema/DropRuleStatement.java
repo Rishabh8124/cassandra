@@ -47,10 +47,9 @@ public class DropRuleStatement extends AlterSchemaStatement
         this.ifExists = ifExists;
     }
 
-    @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.DROP);
+        state.ensurePermission(Permission.DROP_POLICY, org.apache.cassandra.auth.RoleResource.root());
     }
 
     @Override

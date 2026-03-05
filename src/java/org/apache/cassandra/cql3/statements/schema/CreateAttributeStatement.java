@@ -58,10 +58,9 @@ public class CreateAttributeStatement extends AlterSchemaStatement
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.CREATE);
+        state.ensurePermission(Permission.CREATE_ATTRIBUTE, org.apache.cassandra.auth.RoleResource.root());
     }
 
     @Override

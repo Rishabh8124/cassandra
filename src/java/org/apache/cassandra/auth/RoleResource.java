@@ -45,7 +45,20 @@ public class RoleResource implements IResource, Comparable<RoleResource>
                                                                                         Permission.ALTER,
                                                                                         Permission.DROP,
                                                                                         Permission.AUTHORIZE,
-                                                                                        Permission.DESCRIBE);
+                                                                                        Permission.DESCRIBE,
+                                                                                        // ABAC Administrative Permissions
+                                                                                        Permission.CREATE_ATTRIBUTE,
+                                                                                        Permission.DROP_ATTRIBUTE,
+                                                                                        Permission.ALTER_ATTRIBUTE,
+                                                                                        Permission.ASSIGN_USER_ATTRIBUTE,
+                                                                                        Permission.REVOKE_USER_ATTRIBUTE,
+                                                                                        Permission.ASSIGN_RESOURCE_ATTRIBUTE,
+                                                                                        Permission.REVOKE_RESOURCE_ATTRIBUTE,
+                                                                                        Permission.CREATE_POLICY,
+                                                                                        Permission.DROP_POLICY,
+                                                                                        Permission.ALTER_POLICY,
+                                                                                        Permission.ENABLE_POLICY,
+                                                                                        Permission.DISABLE_POLICY);
     // permissions which may be granted on role level resources
     private static final Set<Permission> ROLE_LEVEL_PERMISSIONS = Sets.immutableEnumSet(Permission.ALTER,
                                                                                         Permission.DROP,

@@ -60,10 +60,24 @@ public enum Permission
 
     UNMASK, // required to see masked data
 
-    SELECT_MASKED; // required for SELECT on a table with restictions on masked columns
+    SELECT_MASKED, // required for SELECT on a table with restictions on masked columns
+
+    // ABAC Administrative Permissions
+    CREATE_ATTRIBUTE,
+    DROP_ATTRIBUTE,
+    ALTER_ATTRIBUTE,
+    ASSIGN_USER_ATTRIBUTE,
+    REVOKE_USER_ATTRIBUTE,
+    ASSIGN_RESOURCE_ATTRIBUTE,
+    REVOKE_RESOURCE_ATTRIBUTE,
+    CREATE_POLICY,
+    DROP_POLICY,
+    ALTER_POLICY,
+    ENABLE_POLICY,
+    DISABLE_POLICY;
 
     public static final Set<Permission> ALL =
-            Sets.immutableEnumSet(EnumSet.range(Permission.CREATE, Permission.SELECT_MASKED));
+            Sets.immutableEnumSet(EnumSet.range(Permission.CREATE, Permission.DISABLE_POLICY));
     public static final Set<Permission> NONE = ImmutableSet.of();
 
     /**

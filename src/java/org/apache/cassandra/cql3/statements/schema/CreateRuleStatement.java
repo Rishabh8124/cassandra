@@ -68,10 +68,9 @@ public class CreateRuleStatement extends AlterSchemaStatement
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.CREATE);
+        state.ensurePermission(Permission.CREATE_POLICY, org.apache.cassandra.auth.RoleResource.root());
     }
 
     @Override

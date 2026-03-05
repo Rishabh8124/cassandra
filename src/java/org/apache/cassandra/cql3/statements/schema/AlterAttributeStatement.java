@@ -57,10 +57,9 @@ public class AlterAttributeStatement extends AlterSchemaStatement
         this.valuesToDrop = valuesToDrop;
     }
 
-    @Override
     public void authorize(ClientState state) throws RequestValidationException
     {
-        state.ensureAllKeyspacesPermission(Permission.ALTER);
+        state.ensurePermission(Permission.ALTER_ATTRIBUTE, org.apache.cassandra.auth.RoleResource.root());
     }
 
     @Override

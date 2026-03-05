@@ -29,7 +29,6 @@ import org.apache.cassandra.cql3.terms.Term;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.exceptions.RequestValidationException;
-import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.schema.Keyspaces;
 import org.apache.cassandra.schema.Keyspaces.KeyspacesDiff;
 import org.apache.cassandra.service.ClientState;
@@ -62,12 +61,11 @@ public class GrantAttributeStatement extends AlterSchemaStatement
     {
         if (attributeType.equalsIgnoreCase("USER"))
         {
-            if (!state.getUser().isSuper())
-                throw new UnauthorizedException("Only superusers can grant user attributes.");
+            state.ensurePermission(Permission.ASSIGN_USER_ATTRIBUTE, org.apache.cassandra.auth.RoleResource.role(name));
         }
         else // RESOURCE
         {
-            state.ensurePermission(Permission.AUTHORIZE, resource);
+            state.ensurePermission(Permission.ASSIGN_RESOURCE_ATTRIBUTE, resource);
         }
     }
 
