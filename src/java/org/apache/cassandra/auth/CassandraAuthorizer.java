@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.auth;
 
+import org.apache.cassandra.service.EnvironmentAttributeManager;
+
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -129,37 +131,42 @@ public class CassandraAuthorizer implements IAuthorizer
             resourceAttributes.put(row.getString("attribute_name"), row.getString("attribute_value"));
         }
 
-        // 3. Get environment attributes
-        Map<String, String> envAttributes = new HashMap<>();
-        try
-        {
-            String envConfigsQuery = "SELECT config_name, values FROM system_auth.env_attribute_configs";
-            UntypedResultSet configs = process(envConfigsQuery, authReadConsistencyLevel());
-
-            String currentDay = java.time.ZonedDateTime.now().getDayOfWeek().toString();
-
-            for (UntypedResultSet.Row config : configs)
-            {
-                String configName = config.getString("config_name");
-                if ("weekday".equals(configName) && config.has("values"))
-                {
-                    Set<String> values = config.getSet("values", UTF8Type.instance);
-                    if (values.contains(currentDay)) {
-                        envAttributes.put("weekday", "true");
-                    } else {
-                        envAttributes.put("weekday", "false");
-                    }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            logger.warn("Failed to evaluate environment attribute configs", e);
-        }
-
-        // 4. Get all ABAC rules
+        // 3. Get all ABAC rules to determine which environment attributes are needed
         String rulesQuery = "SELECT * FROM system_auth.abac_rules";
         UntypedResultSet rulesRows = process(rulesQuery, authReadConsistencyLevel());
+
+        Set<String> requiredEnvAttributes = new HashSet<>();
+        for (UntypedResultSet.Row rule : rulesRows)
+        {
+            if (rule.has("environment_attribute_conditions"))
+            {
+                requiredEnvAttributes.addAll(rule.getMap("environment_attribute_conditions", UTF8Type.instance, UTF8Type.instance).keySet());
+            }
+        }
+
+        // 4. Resolve required environment attributes using the EnvironmentAttributeManager
+        Map<String, String> envAttributes = new HashMap<>();
+        if (!requiredEnvAttributes.isEmpty())
+        {
+            logger.debug("Required environment attributes for ABAC evaluation: {}", requiredEnvAttributes);
+            for (String attributeName : requiredEnvAttributes)
+            {
+                try
+                {
+                    String attributeValue = EnvironmentAttributeManager.getInstance().getAttributeValue(attributeName);
+                    if (attributeValue != null)
+                    {
+                        envAttributes.put(attributeName, attributeValue);
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.warn("Failed to resolve environment attribute '{}'", attributeName, e);
+                }
+            }
+            logger.debug("Resolved environment attributes: {}", envAttributes);
+        }
+
 
         Set<Permission> grantedPermissions = EnumSet.noneOf(Permission.class);
         Set<Permission> deniedPermissions = EnumSet.noneOf(Permission.class);
