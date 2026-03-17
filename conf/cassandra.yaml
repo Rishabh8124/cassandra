@@ -196,7 +196,7 @@ batchlog_replay_throttle: 1024KiB
 #   Please increase system_auth keyspace replication factor if you use this authenticator.
 #   If using PasswordAuthenticator, CassandraRoleManager must also be used (see below)
 authenticator:
-  class_name: AllowAllAuthenticator
+  class_name: PasswordAuthenticator
 # MutualTlsAuthenticator can be configured using the following configuration. One can add their own validator
 # which implements MutualTlsCertificateValidator class and provide logic for extracting identity out of certificates
 # and validating certificates.
@@ -216,7 +216,7 @@ authenticator:
 # - CassandraAuthorizer stores permissions in system_auth.role_permissions table. Please
 #   increase system_auth keyspace replication factor if you use this authorizer.
 authorizer:
-  class_name: AllowAllAuthorizer
+  class_name: CassandraAuthorizer
 
 # Part of the Authentication & Authorization backend, implementing IRoleManager; used
 # to maintain grants and memberships between roles.

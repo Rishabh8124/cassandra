@@ -43,14 +43,6 @@ public final class AuthKeyspace
 
     public static final int DEFAULT_RF = CassandraRelevantProperties.SYSTEM_AUTH_DEFAULT_RF.getInt();
 
-    /**
-     * Generation is used as a timestamp for automatic table creation on startup.
-     * If you make any changes to the tables below, make sure to increment the
-     * generation and document your change here.
-     *
-     * gen 0: original definition in 3.0
-     * gen 1: compression chunk length reduced to 16KiB, memtable_flush_period_in_ms now unset on all tables in 4.0
-     */
     public static final long GENERATION = 1;
 
     public static final String ROLES = "roles";
@@ -61,10 +53,29 @@ public final class AuthKeyspace
     public static final String CIDR_PERMISSIONS = "cidr_permissions";
     public static final String CIDR_GROUPS = "cidr_groups";
     public static final String IDENTITY_TO_ROLES = "identity_to_role";
-    public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES, ROLE_MEMBERS, ROLE_PERMISSIONS,
-                                                                  RESOURCE_ROLE_INDEX, NETWORK_PERMISSIONS,
-                                                                  CIDR_PERMISSIONS, CIDR_GROUPS,
-                                                                  IDENTITY_TO_ROLES);
+    public static final String ATTRIBUTE_DEFINITIONS = "attribute_definitions";
+    public static final String USER_ATTRIBUTE_VALUES = "user_attribute_values";
+    public static final String RESOURCE_ATTRIBUTE_VALUES = "resource_attribute_values";
+    public static final String ABAC_RULES = "abac_rules";
+    public static final String ENV_ATTRIBUTE_CONFIGS = "env_attribute_configs";
+    public static final String ATTRIBUTE_EDGES = "attribute_hierarchy_edges";
+    public static final String HIERARCHY_METADATA = "hierarchy_metadata";
+
+    public static final Set<String> TABLE_NAMES = ImmutableSet.of(ROLES,
+                                                                  ROLE_MEMBERS,
+                                                                  ROLE_PERMISSIONS,
+                                                                  RESOURCE_ROLE_INDEX,
+                                                                  NETWORK_PERMISSIONS,
+                                                                  CIDR_PERMISSIONS,
+                                                                  CIDR_GROUPS,
+                                                                  IDENTITY_TO_ROLES,
+                                                                  ATTRIBUTE_DEFINITIONS,
+                                                                  USER_ATTRIBUTE_VALUES,
+                                                                  RESOURCE_ATTRIBUTE_VALUES,
+                                                                  ABAC_RULES,
+                                                                  ENV_ATTRIBUTE_CONFIGS,
+                                                                  ATTRIBUTE_EDGES,
+                                                                  HIERARCHY_METADATA);
 
     public static final long SUPERUSER_SETUP_DELAY = SUPERUSER_SETUP_DELAY_MS.getLong();
 
@@ -149,6 +160,73 @@ public final class AuthKeyspace
           CIDR_GROUPS_CQL
     );
 
+    public static String ATTRIBUTE_DEFINITIONS_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                     + "attribute_name text PRIMARY KEY,"
+                                                     + "attribute_type text,"
+                                                     + "allowed_values set<text>)";
+    private static final TableMetadata AttributeDefinitions =
+    parse(ATTRIBUTE_DEFINITIONS,
+          "ABAC attribute definitions",
+          ATTRIBUTE_DEFINITIONS_CQL);
+
+    public static String USER_ATTRIBUTE_VALUES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                     + "user_name text,"
+                                                     + "attribute_name text,"
+                                                     + "attribute_value text,"
+                                                     + "PRIMARY KEY(user_name, attribute_name))";
+    private static final TableMetadata UserAttributeValues =
+    parse(USER_ATTRIBUTE_VALUES,
+          "ABAC user attribute values",
+          USER_ATTRIBUTE_VALUES_CQL);
+
+    public static String RESOURCE_ATTRIBUTE_VALUES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                         + "resource_name text,"
+                                                         + "attribute_name text,"
+                                                         + "attribute_value text,"
+                                                         + "PRIMARY KEY(resource_name, attribute_name))";
+    private static final TableMetadata ResourceAttributeValues =
+    parse(RESOURCE_ATTRIBUTE_VALUES,
+          "ABAC resource attribute values",
+          RESOURCE_ATTRIBUTE_VALUES_CQL);
+
+    public static String ABAC_RULES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                          + "rule_name text PRIMARY KEY,"
+                                          + "permissions set<text>,"
+                                          + "user_attribute_conditions map<text, text>,"
+                                          + "resource_attribute_conditions map<text, text>,"
+                                          + "environment_attribute_conditions map<text, text>,"
+                                          + "effect text)";
+    private static final TableMetadata AbacRules =
+    parse(ABAC_RULES,
+          "ABAC rules",
+          ABAC_RULES_CQL);
+
+    public static String ENV_ATTRIBUTE_CONFIGS_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                       + "config_name text PRIMARY KEY,"
+                                                       + "values set<text>)";
+    private static final TableMetadata EnvAttributeConfigs =
+    parse(ENV_ATTRIBUTE_CONFIGS,
+          "ABAC environment attribute configs",
+          ENV_ATTRIBUTE_CONFIGS_CQL);
+
+    public static String ATTRIBUTE_EDGES_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                               + "attribute_name text,"
+                                               + "parent text,"
+                                               + "child text,"
+                                               + "PRIMARY KEY(attribute_name, parent, child))";
+    private static final TableMetadata AttributeEdges =
+    parse(ATTRIBUTE_EDGES,
+          "ABAC attribute hierarchy edges",
+          ATTRIBUTE_EDGES_CQL);
+
+    public static String HIERARCHY_METADATA_CQL = "CREATE TABLE IF NOT EXISTS %s ("
+                                                  + "key text PRIMARY KEY,"
+                                                  + "last_modified timestamp)";
+    private static final TableMetadata HierarchyMetadata =
+    parse(HIERARCHY_METADATA,
+          "Timestamp for the last modification to attribute hierarchies",
+          HIERARCHY_METADATA_CQL);
+
     private static TableMetadata parse(String name, String description, String cql)
     {
         return CreateTableStatement.parse(format(cql, name), SchemaConstants.AUTH_KEYSPACE_NAME)
@@ -162,8 +240,20 @@ public final class AuthKeyspace
     {
         return KeyspaceMetadata.create(SchemaConstants.AUTH_KEYSPACE_NAME,
                                        KeyspaceParams.simple(Math.max(DEFAULT_RF, DatabaseDescriptor.getDefaultKeyspaceRF())),
-                                       Tables.of(Roles, RoleMembers, RolePermissions,
-                                                 ResourceRoleIndex, NetworkPermissions,
-                                                 CIDRPermissions, CIDRGroups, IdentityToRoles));
+                                       Tables.of(Roles,
+                                                 RoleMembers,
+                                                 RolePermissions,
+                                                 ResourceRoleIndex,
+                                                 NetworkPermissions,
+                                                 CIDRPermissions,
+                                                 CIDRGroups,
+                                                 IdentityToRoles,
+                                                 AttributeDefinitions,
+                                                 UserAttributeValues,
+                                                 ResourceAttributeValues,
+                                                 AbacRules,
+                                                 EnvAttributeConfigs,
+                                                 AttributeEdges,
+                                                 HierarchyMetadata));
     }
 }

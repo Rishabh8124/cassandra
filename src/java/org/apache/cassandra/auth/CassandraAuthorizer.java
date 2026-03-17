@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.auth;
 
+import org.apache.cassandra.service.EnvironmentAttributeManager;
+
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -74,6 +76,7 @@ public class CassandraAuthorizer implements IAuthorizer
     // or indirectly via roles granted to the user.
     public Set<Permission> authorize(AuthenticatedUser user, IResource resource)
     {
+        logger.info("AUTHORIZE CALLED FOR RESOURCE: {}", resource.getName());
         try
         {
             if (user.isSuper())
@@ -85,6 +88,18 @@ public class CassandraAuthorizer implements IAuthorizer
             // it saves a Set creation in RolesCache
             for (Role role: user.getRoleDetails())
                 addPermissionsForRole(permissions, resource, role.resource);
+
+            // New ABAC logic
+            try
+            {
+                Set<Permission> abacPermissions = getAbacPermissions(user, resource);
+                permissions.addAll(abacPermissions);
+            }
+            catch (Exception e)
+            {
+                logger.error("Error during ABAC authorization", e);
+            }
+
             return permissions;
         }
         catch (RequestExecutionException | RequestValidationException e)
@@ -92,6 +107,132 @@ public class CassandraAuthorizer implements IAuthorizer
             logger.debug("Failed to authorize {} for {}", user, resource);
             throw new UnauthorizedException("Unable to perform authorization of permissions: " + e.getMessage(), e);
         }
+    }
+
+    private Set<Permission> getAbacPermissions(AuthenticatedUser user, IResource resource)
+    {
+        logger.info("Performing ABAC authorization for user {} on resource {}", user.getName(), resource.getName());
+
+        // 1. Get user attributes
+        String userAttributesQuery = String.format("SELECT attribute_name, attribute_value FROM system_auth.user_attribute_values WHERE user_name = '%s'", escape(user.getName()));
+        UntypedResultSet userRows = process(userAttributesQuery, authReadConsistencyLevel());
+        Map<String, String> userAttributes = new HashMap<>();
+        for (UntypedResultSet.Row row : userRows)
+        {
+            userAttributes.put(row.getString("attribute_name"), row.getString("attribute_value"));
+        }
+
+        // 2. Get resource attributes
+        String resourceAttributesQuery = String.format("SELECT attribute_name, attribute_value FROM system_auth.resource_attribute_values WHERE resource_name = '%s'", escape(resource.getName()));
+        UntypedResultSet resourceRows = process(resourceAttributesQuery, authReadConsistencyLevel());
+        Map<String, String> resourceAttributes = new HashMap<>();
+        for (UntypedResultSet.Row row : resourceRows)
+        {
+            resourceAttributes.put(row.getString("attribute_name"), row.getString("attribute_value"));
+        }
+
+        // 3. Get all ABAC rules to determine which environment attributes are needed
+        String rulesQuery = "SELECT * FROM system_auth.abac_rules";
+        UntypedResultSet rulesRows = process(rulesQuery, authReadConsistencyLevel());
+
+        Set<String> requiredEnvAttributes = new HashSet<>();
+        for (UntypedResultSet.Row rule : rulesRows)
+        {
+            if (rule.has("environment_attribute_conditions"))
+            {
+                requiredEnvAttributes.addAll(rule.getMap("environment_attribute_conditions", UTF8Type.instance, UTF8Type.instance).keySet());
+            }
+        }
+
+        // 4. Resolve required environment attributes using the EnvironmentAttributeManager
+        Map<String, String> envAttributes = new HashMap<>();
+        if (!requiredEnvAttributes.isEmpty())
+        {
+            logger.debug("Required environment attributes for ABAC evaluation: {}", requiredEnvAttributes);
+            for (String attributeName : requiredEnvAttributes)
+            {
+                try
+                {
+                    String attributeValue = EnvironmentAttributeManager.getInstance().getAttributeValue(attributeName);
+                    if (attributeValue != null)
+                    {
+                        envAttributes.put(attributeName, attributeValue);
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.warn("Failed to resolve environment attribute '{}'", attributeName, e);
+                }
+            }
+            logger.debug("Resolved environment attributes: {}", envAttributes);
+        }
+
+
+        Set<Permission> grantedPermissions = EnumSet.noneOf(Permission.class);
+        Set<Permission> deniedPermissions = EnumSet.noneOf(Permission.class);
+
+        // 5. Evaluate rules
+        for (UntypedResultSet.Row rule : rulesRows)
+        {
+            Map<String, String> ruleUserConditions = rule.has("user_attribute_conditions") ? rule.getMap("user_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
+            Map<String, String> ruleResourceConditions = rule.has("resource_attribute_conditions") ? rule.getMap("resource_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
+            Map<String, String> ruleEnvironmentConditions = rule.has("environment_attribute_conditions") ? rule.getMap("environment_attribute_conditions", UTF8Type.instance, UTF8Type.instance) : Collections.emptyMap();
+
+            boolean userConditionsMet = evaluateConditions(ruleUserConditions, userAttributes);
+            boolean resourceConditionsMet = evaluateConditions(ruleResourceConditions, resourceAttributes);
+            boolean environmentConditionsMet = evaluateConditions(ruleEnvironmentConditions, envAttributes);
+
+            logger.info("Conditions met - U, R, E : {}, {}, {}", userConditionsMet, resourceConditionsMet, environmentConditionsMet);
+
+            if (userConditionsMet && resourceConditionsMet && environmentConditionsMet)
+            {
+                Set<Permission> rulePermissions = permissions(rule.getSet("permissions", UTF8Type.instance));
+                String effect = rule.getString("effect");
+
+                if ("GRANT".equalsIgnoreCase(effect))
+                {
+                    grantedPermissions.addAll(rulePermissions);
+                }
+                else if ("DENY".equalsIgnoreCase(effect))
+                {
+                    deniedPermissions.addAll(rulePermissions);
+                }
+            }
+        }
+
+        // Resolve conflicts: Grant overrides Deny
+        grantedPermissions.removeAll(deniedPermissions);
+
+        logger.info("ABAC permissions for user {} on resource {}: {}", user.getName(), resource.getName(), grantedPermissions);
+        return grantedPermissions;
+    }
+
+    private boolean evaluateConditions(Map<String, String> conditions, Map<String, String> attributes)
+    {
+        if (conditions == null || conditions.isEmpty())
+        {
+            return true; // No conditions means they are met
+        }
+
+        for (Map.Entry<String, String> condition : conditions.entrySet())
+        {
+            String requiredAttributeName = condition.getKey();
+            String requiredAttributeValue = condition.getValue();
+            String actualValue = attributes.get(requiredAttributeName);
+
+            if (actualValue == null) return false; // Condition not met if attribute is missing
+
+            // If the values are directly equal, the condition is met.
+            if (actualValue.equals(requiredAttributeValue)) continue;
+
+            // If not equal, check if the actual value is a descendant of the required value.
+            if (AttributeHierarchyManager.instance.check(requiredAttributeName, actualValue, requiredAttributeValue)) continue;
+
+            // If neither direct equality nor the hierarchy check passes, the condition is not met.
+            return false;
+        }
+
+        return true; // All conditions were met
     }
 
     public Set<Permission> grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
@@ -401,6 +542,7 @@ public class CassandraAuthorizer implements IAuthorizer
     public void setup()
     {
         authorizeRoleStatement = prepare(ROLE, AuthKeyspace.ROLE_PERMISSIONS);
+        AttributeHierarchyManager.instance.initialize();
     }
 
     private SelectStatement prepare(String entityname, String permissionsTable)
@@ -429,7 +571,7 @@ public class CassandraAuthorizer implements IAuthorizer
     @VisibleForTesting
     UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
-        return QueryProcessor.process(query, cl);
+        return QueryProcessor.executeInternal(query);
     }
 
     void processBatch(BatchStatement statement)
